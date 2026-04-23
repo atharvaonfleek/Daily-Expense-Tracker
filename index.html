@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Xpense</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:ital,opsz,wght@0,9..144,300;1,9..144,300&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+  <!-- AUTH -->
+  <div id="authPage">
+    <div class="auth-left">
+      <div class="auth-brand">
+        <span class="auth-logo">✦</span>
+        <span class="auth-logo-name">Xpense</span>
+      </div>
+      <p class="auth-quote">"Know where it goes,<br>decide where it grows."</p>
+    </div>
+    <div class="auth-right">
+      <div class="auth-box">
+        <div class="auth-tabs">
+          <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Sign in</button>
+          <button class="auth-tab" id="tabSignup" onclick="switchTab('signup')">New here?</button>
+        </div>
+        <p class="auth-err" id="authErr"></p>
+
+        <!-- LOGIN -->
+        <div id="loginForm">
+          <div class="field-group">
+            <label class="field-label">Email</label>
+            <input class="field-input" type="email" id="loginEmail" placeholder="you@email.com"/>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Password</label>
+            <div class="field-row">
+              <input class="field-input" type="password" id="loginPassword" placeholder="your password"/>
+              <button class="eye-btn" onclick="toggleEye('loginPassword', this)">show</button>
+            </div>
+          </div>
+          <button class="btn-primary" onclick="handleLogin()">Sign in →</button>
+        </div>
+
+        <!-- SIGNUP -->
+        <div id="signupForm" class="is-hidden">
+          <div class="field-group">
+            <label class="field-label">Your name</label>
+            <input class="field-input" type="text" id="signupName" placeholder="Rahul, Priya…"/>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Email</label>
+            <input class="field-input" type="email" id="signupEmail" placeholder="you@email.com"/>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Password <small>(min 6 chars)</small></label>
+            <div class="field-row">
+              <input class="field-input" type="password" id="signupPassword" placeholder="••••••"/>
+              <button class="eye-btn" onclick="toggleEye('signupPassword', this)">show</button>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Confirm password</label>
+            <div class="field-row">
+              <input class="field-input" type="password" id="signupConfirm" placeholder="••••••"/>
+              <button class="eye-btn" onclick="toggleEye('signupConfirm', this)">show</button>
+            </div>
+          </div>
+          <button class="btn-primary" onclick="handleSignup()">Create account →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WELCOME -->
+  <div id="welcomePage" class="is-hidden">
+    <div class="welcome-center">
+      <div class="welcome-avatar" id="welcomeAvatar">R</div>
+      <p class="welcome-hi" id="welcomeGreeting">Good morning,</p>
+      <h1 class="welcome-name" id="welcomeName">Rahul.</h1>
+      <p class="welcome-sub">Ready to see where your money went?</p>
+      <button class="btn-primary welcome-cta" onclick="goToApp()">Open dashboard →</button>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="appPage" class="is-hidden">
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <div class="sidebar-brand">
+          <span class="s-logo">✦</span>
+          <span class="s-name">Xpense</span>
+        </div>
+        <nav class="sidebar-nav">
+          <a class="nav-item active" href="#">Dashboard</a>
+          <button class="nav-item export-btn" onclick="exportToExcel()">↓ Export to Excel</button>
+        </nav>
+      </div>
+      <div class="sidebar-bottom">
+        <button class="ai-chip" id="aiChip" onclick="openApiModal()">
+          <span class="ai-pip" id="aiPip"></span>
+          <span id="aiLabel">AI off</span>
+        </button>
+        <div class="user-row" tabindex="0">
+          <div class="user-dot" id="userDot">R</div>
+          <span class="user-nm" id="userName">Rahul</span>
+          <div class="user-dd">
+            <button onclick="openApiModal()">AI settings</button>
+            <button class="dd-danger" onclick="handleLogout()">Sign out</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-area">
+      <div class="topbar">
+        <div class="topbar-title" id="topbarGreet">Good morning</div>
+        <div class="topbar-sub" id="topbarName">Rahul</div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <p class="stat-label">Total spent</p>
+          <p class="stat-val" id="statTotal">₹0</p>
+        </div>
+        <div class="stat-card highlight">
+          <p class="stat-label">This month</p>
+          <p class="stat-val" id="statMonth">₹0</p>
+          <p class="stat-sub" id="statMonthLabel"></p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Daily avg</p>
+          <p class="stat-val" id="statAvg">₹0</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Top habit</p>
+          <p class="stat-val stat-val--sm" id="statTop">—</p>
+        </div>
+      </div>
+
+      <div class="body-grid">
+        <div class="col-left">
+          <div class="card">
+            <h2 class="card-heading">Add expense</h2>
+            <div class="field-group">
+              <label class="field-label">Amount (₹)</label>
+              <input class="field-input" type="number" id="inputAmount" placeholder="0" min="1"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label">
+                What for?
+                <span class="ai-note is-hidden" id="aiHint">· AI will guess category</span>
+              </label>
+              <input class="field-input" type="text" id="inputDesc" placeholder="Swiggy, metro, medicine…"/>
+            </div>
+            <div class="two-fields">
+              <div class="field-group">
+                <label class="field-label">Date</label>
+                <input class="field-input" type="date" id="inputDate"/>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Category</label>
+                <select class="field-input" id="inputCategory">
+                  <option value="Food">🍔 Food</option>
+                  <option value="Transport">🚌 Transport</option>
+                  <option value="Shopping">🛍 Shopping</option>
+                  <option value="Bills">💡 Bills</option>
+                  <option value="Entertainment">🎬 Entertainment</option>
+                  <option value="Health">💊 Health</option>
+                  <option value="Other">· Other</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn-primary" id="addBtn" onclick="handleAddExpense()">Add expense</button>
+          </div>
+
+          <div class="card">
+            <h2 class="card-heading">Insights</h2>
+            <div id="insightsList">
+              <p class="empty-note">Add a few expenses to see patterns.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-right">
+          <div class="card">
+            <h2 class="card-heading">Recent</h2>
+            <div id="txList">
+              <p class="empty-note">No expenses yet.</p>
+            </div>
+          </div>
+          <div class="card">
+            <h2 class="card-heading">Breakdown</h2>
+            <div class="charts-grid">
+              <div>
+                <p class="chart-lbl">By category</p>
+                <div class="chart-box"><canvas id="pieChart"></canvas></div>
+              </div>
+              <div>
+                <p class="chart-lbl">Last 6 months</p>
+                <div class="chart-box"><canvas id="barChart"></canvas></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- API MODAL -->
+  <div class="modal-wrap is-hidden" id="apiModal" onclick="modalBackdropClick(event)">
+    <div class="modal-card">
+      <h3 class="modal-heading">AI settings</h3>
+      <p class="modal-body">Paste your OpenAI key to get automatic categorisation. It's saved only in your browser.</p>
+      <p class="modal-hint">Get a free key at <strong>platform.openai.com</strong> → API Keys.</p>
+      <div class="field-group">
+        <label class="field-label">OpenAI API key</label>
+        <input class="field-input" type="password" id="apiKeyInput" placeholder="sk-…"/>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-ghost" onclick="closeApiModal()">Cancel</button>
+        <button class="btn-primary modal-save-btn" onclick="saveApiKey()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toasts"></div>
+
+  <script src="auth.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
