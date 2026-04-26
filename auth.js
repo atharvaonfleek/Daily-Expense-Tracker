@@ -4,46 +4,52 @@ let currentUser = null;
 
 /* On page load — check if already logged in */
 window.addEventListener('DOMContentLoaded', function () {
+  // Apply saved theme first
+  var savedTheme = localStorage.getItem('xpense_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+
   var saved = localStorage.getItem('xpense_user');
   if (saved) {
-    currentUser = JSON.parse(saved);
-    showPage('welcome');
+    try {
+      var parsed = JSON.parse(saved);
+      // Re-verify user still exists in users store (prevents stale sessions)
+      var users = getUsers();
+      var fresh = users[parsed.email];
+      if (fresh && fresh.password === parsed.password) {
+        currentUser = fresh;
+        showPage('welcome');
+        return;
+      } else {
+        // Stale / tampered session — clear it
+        localStorage.removeItem('xpense_user');
+      }
+    } catch(e) {
+      localStorage.removeItem('xpense_user');
+    }
   }
-  // auth page is visible by default in HTML
+  showPage('auth');
 });
 
 /* ── Show a page ── */
 function showPage(name) {
   var pages = { auth: 'authPage', welcome: 'welcomePage', app: 'appPage' };
-
-  // hide all pages
   Object.values(pages).forEach(function(id) {
     var el = document.getElementById(id);
-    el.classList.add('is-hidden');
-    el.classList.remove('page-in');
+    if (el) { el.classList.add('is-hidden'); el.classList.remove('page-in'); }
   });
-
-  // show the target page
   var target = document.getElementById(pages[name]);
+  if (!target) return;
   target.classList.remove('is-hidden');
-
-  // trigger animation on next frame
-  setTimeout(function() {
-    target.classList.add('page-in');
-  }, 10);
-
-  // fill welcome content when showing welcome
+  setTimeout(function() { target.classList.add('page-in'); }, 10);
   if (name === 'welcome') fillWelcome();
 }
 
 /* ── Fill welcome screen ── */
 function fillWelcome() {
   if (!currentUser) return;
-  var first  = currentUser.name.split(' ')[0];
-  var hour   = new Date().getHours();
-  var greet  = hour < 12 ? 'Good morning,' : hour < 17 ? 'Good afternoon,' : 'Good evening,';
-
-  document.getElementById('welcomeGreeting').textContent = greet;
+  var first = currentUser.name.split(' ')[0];
+  var greet = getGreeting();
+  document.getElementById('welcomeGreeting').textContent = greet + ',';
   document.getElementById('welcomeName').textContent     = first + '.';
   document.getElementById('welcomeAvatar').textContent   = first.charAt(0).toUpperCase();
 }
@@ -52,35 +58,22 @@ function fillWelcome() {
 function goToApp() {
   if (!currentUser) return;
   var first = currentUser.name.split(' ')[0];
-  var hour  = new Date().getHours();
-  var greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-
-  document.getElementById('topbarGreet').textContent = greet;
+  document.getElementById('topbarGreet').textContent = getGreeting();
   document.getElementById('topbarName').textContent  = first;
   document.getElementById('userName').textContent    = first;
   document.getElementById('userDot').textContent     = first.charAt(0).toUpperCase();
-
   showPage('app');
-
-  if (typeof initApp === 'function') {
-    initApp();
-  }
+  if (typeof initApp === 'function') initApp();
 }
 
-/* ── Switch between Sign in / New here tabs ── */
+/* ── Switch tabs ── */
 function switchTab(tab) {
   clearErr();
-  if (tab === 'login') {
-    document.getElementById('loginForm').classList.remove('is-hidden');
-    document.getElementById('signupForm').classList.add('is-hidden');
-    document.getElementById('tabLogin').classList.add('active');
-    document.getElementById('tabSignup').classList.remove('active');
-  } else {
-    document.getElementById('signupForm').classList.remove('is-hidden');
-    document.getElementById('loginForm').classList.add('is-hidden');
-    document.getElementById('tabSignup').classList.add('active');
-    document.getElementById('tabLogin').classList.remove('active');
-  }
+  var isLogin = tab === 'login';
+  document.getElementById('loginForm').classList.toggle('is-hidden', !isLogin);
+  document.getElementById('signupForm').classList.toggle('is-hidden', isLogin);
+  document.getElementById('tabLogin').classList.toggle('active', isLogin);
+  document.getElementById('tabSignup').classList.toggle('active', !isLogin);
 }
 
 /* ── Sign up ── */
@@ -90,18 +83,18 @@ function handleSignup() {
   var pass  = getVal('signupPassword');
   var conf  = getVal('signupConfirm');
 
-  if (!name)           { showErr('What should we call you?');             return; }
-  if (!isEmail(email)) { showErr("That email doesn't look right.");       return; }
-  if (pass.length < 6) { showErr('Password needs at least 6 characters.'); return; }
-  if (pass !== conf)   { showErr("Passwords don't match.");               return; }
+  if (!name)                  { showErr('What should we call you?');              return; }
+  if (!isValidEmail(email))   { showErr("That email doesn't look right.");        return; }
+  if (pass.length < 6)        { showErr('Password needs at least 6 characters.'); return; }
+  if (!/[A-Za-z]/.test(pass)) { showErr('Password must contain at least one letter.'); return; }
+  if (pass !== conf)          { showErr("Passwords don't match.");                return; }
 
   var users = getUsers();
-  if (users[email])    { showErr('Account already exists — sign in instead.'); return; }
+  if (users[email]) { showErr('Account already exists — sign in instead.'); return; }
 
-  var user = { name: name, email: email, password: pass };
+  var user = { name: name, email: email, password: pass, createdAt: Date.now() };
   users[email] = user;
   localStorage.setItem('xpense_users', JSON.stringify(users));
-
   doLogin(user);
 }
 
@@ -110,22 +103,28 @@ function handleLogin() {
   var email = getVal('loginEmail').toLowerCase();
   var pass  = getVal('loginPassword');
 
-  if (!isEmail(email)) { showErr('Enter a valid email address.'); return; }
-  if (!pass)           { showErr('Enter your password.');         return; }
+  if (!isValidEmail(email)) { showErr('Enter a valid email address.'); return; }
+  if (!pass)                 { showErr('Enter your password.');         return; }
 
   var users = getUsers();
   var user  = users[email];
 
-  if (!user)                  { showErr('No account with that email.'); return; }
-  if (user.password !== pass) { showErr('Wrong password.');             return; }
+  // Strict check: account must exist AND password must match exactly
+  if (!user)                  { showErr('No account found with that email.');  return; }
+  if (user.password !== pass) { showErr('Incorrect password. Try again.');     return; }
 
   doLogin(user);
 }
 
-/* ── Set current user and go to welcome ── */
+/* ── Persist login ── */
 function doLogin(user) {
   currentUser = user;
-  localStorage.setItem('xpense_user', JSON.stringify(user));
+  // Store only safe fields (no extra data leakage)
+  localStorage.setItem('xpense_user', JSON.stringify({
+    name: user.name,
+    email: user.email,
+    password: user.password
+  }));
   showPage('welcome');
 }
 
@@ -133,38 +132,59 @@ function doLogin(user) {
 function handleLogout() {
   currentUser = null;
   localStorage.removeItem('xpense_user');
-
-  document.getElementById('loginEmail').value    = '';
-  document.getElementById('loginPassword').value = '';
+  ['loginEmail','loginPassword'].forEach(function(id) {
+    document.getElementById(id).value = '';
+  });
   clearErr();
   switchTab('login');
+  // Close mobile nav if open
+  var sidebar = document.getElementById('sidebar');
+  var overlay = document.getElementById('sidebarOverlay');
+  if (sidebar) sidebar.classList.remove('open');
+  if (overlay) overlay.classList.remove('show');
   showPage('auth');
 }
 
-/* ── Show / hide password ── */
+/* ── Show/hide password ── */
 function toggleEye(inputId, btn) {
   var inp = document.getElementById(inputId);
-  if (inp.type === 'password') {
-    inp.type = 'text';
-    btn.textContent = 'hide';
-  } else {
-    inp.type = 'password';
-    btn.textContent = 'show';
-  }
+  if (inp.type === 'password') { inp.type = 'text';     btn.textContent = 'hide'; }
+  else                         { inp.type = 'password'; btn.textContent = 'show'; }
+}
+
+/* ── Theme toggle ── */
+function toggleTheme() {
+  var current = document.documentElement.getAttribute('data-theme') || 'light';
+  var next    = current === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('xpense_theme', next);
+  // Update all toggle buttons
+  document.querySelectorAll('.theme-icon').forEach(function(el) {
+    el.textContent = next === 'dark' ? '☀️' : '🌙';
+  });
 }
 
 /* ── Helpers ── */
-function getVal(id)    { return document.getElementById(id).value.trim(); }
-function isEmail(e)    { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
-function getUsers()    { return JSON.parse(localStorage.getItem('xpense_users') || '{}'); }
-function showErr(msg)  { document.getElementById('authErr').textContent = msg; }
-function clearErr()    { document.getElementById('authErr').textContent = ''; }
+function getVal(id) { return document.getElementById(id).value.trim(); }
 
-/* ── Enter key shortcut ── */
+function isValidEmail(email) {
+  // RFC-5322-inspired — rejects common typos and missing TLD
+  return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email);
+}
+
+function getUsers()   { return JSON.parse(localStorage.getItem('xpense_users') || '{}'); }
+function showErr(msg) { document.getElementById('authErr').textContent = msg; }
+function clearErr()   { document.getElementById('authErr').textContent = ''; }
+
+function getGreeting() {
+  var h = new Date().getHours();
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+}
+
+/* ── Enter key shortcuts ── */
 document.addEventListener('keydown', function(e) {
   if (e.key !== 'Enter') return;
   var id = document.activeElement ? document.activeElement.id : '';
-  if (id === 'loginEmail' || id === 'loginPassword')                              handleLogin();
-  if (id === 'signupName' || id === 'signupEmail' ||
-      id === 'signupPassword' || id === 'signupConfirm')                          handleSignup();
+  if (id === 'loginEmail' || id === 'loginPassword') handleLogin();
+  if (['signupName','signupEmail','signupPassword','signupConfirm'].includes(id)) handleSignup();
 });
