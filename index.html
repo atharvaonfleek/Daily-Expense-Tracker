@@ -10,7 +10,7 @@
 </head>
 <body>
 
-  <!-- ═══════ AUTH ═══════ -->
+  <!-- ═══════ AUTH PAGE ═══════ -->
   <div id="authPage">
     <div class="auth-left">
       <div class="auth-brand">
@@ -19,22 +19,265 @@
       </div>
       <p class="auth-quote">"Know where it goes,<br><em>decide</em> where it grows."</p>
     </div>
-
     <div class="auth-right">
       <div class="auth-box">
         <p class="auth-box-sub">Your personal finance tracker</p>
-
         <div class="auth-tabs">
           <button class="auth-tab active" id="tabLogin"  onclick="switchTab('login')">Sign in</button>
           <button class="auth-tab"        id="tabSignup" onclick="switchTab('signup')">New here?</button>
         </div>
-
         <p class="auth-err" id="authErr"></p>
 
         <!-- LOGIN -->
         <div id="loginForm">
           <div class="field-group">
             <label class="field-label">Email</label>
+            <input class="field-input" type="email" id="loginEmail" placeholder="you@email.com" autocomplete="email"/>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Password</label>
+            <div class="field-row">
+              <input class="field-input" type="password" id="loginPassword" placeholder="your password" autocomplete="current-password"/>
+              <button class="eye-btn" onclick="toggleEye('loginPassword', this)">show</button>
+            </div>
+          </div>
+          <button class="btn-primary" onclick="handleLogin()">Sign in →</button>
+        </div>
+
+        <!-- SIGNUP -->
+        <div id="signupForm" class="is-hidden">
+          <div class="field-group">
+            <label class="field-label">Your name</label>
+            <input class="field-input" type="text" id="signupName" placeholder="Rahul, Priya…" autocomplete="name"/>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Email</label>
+            <input class="field-input" type="email" id="signupEmail" placeholder="you@email.com" autocomplete="email"/>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Password <small>(min 6 chars)</small></label>
+            <div class="field-row">
+              <input class="field-input" type="password" id="signupPassword" placeholder="••••••" autocomplete="new-password"/>
+              <button class="eye-btn" onclick="toggleEye('signupPassword', this)">show</button>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Confirm password</label>
+            <div class="field-row">
+              <input class="field-input" type="password" id="signupConfirm" placeholder="••••••" autocomplete="new-password"/>
+              <button class="eye-btn" onclick="toggleEye('signupConfirm', this)">show</button>
+            </div>
+          </div>
+          <button class="btn-primary" onclick="handleSignup()">Create account →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ WELCOME PAGE ═══════ -->
+  <div id="welcomePage" class="is-hidden">
+    <div class="welcome-center">
+      <div class="welcome-avatar" id="welcomeAvatar">R</div>
+      <p class="welcome-hi" id="welcomeGreeting">Good morning,</p>
+      <h1 class="welcome-name" id="welcomeName">Rahul.</h1>
+      <p class="welcome-sub">Ready to see where your money went?</p>
+      <button class="btn-primary welcome-cta" onclick="goToApp()">Open dashboard →</button>
+    </div>
+  </div>
+
+  <!-- ═══════ MAIN APP PAGE ═══════ -->
+  <div id="appPage" class="is-hidden">
+
+    <!-- Mobile topbar -->
+    <div class="mobile-topbar">
+      <div class="mobile-brand">
+        <span class="s-logo">✦</span>
+        <span class="s-name">Xpense</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="theme-btn" onclick="toggleTheme()" title="Toggle theme">
+          <span class="theme-icon">🌙</span>
+        </button>
+        <button class="hamburger" onclick="openSidebar()" title="Menu">☰</button>
+      </div>
+    </div>
+
+    <!-- Sidebar overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-top">
+        <div class="sidebar-brand">
+          <span class="s-logo">✦</span>
+          <span class="s-name">Xpense</span>
+        </div>
+        <nav class="sidebar-nav">
+          <a class="nav-item active" href="#">📊 Dashboard</a>
+          <button class="nav-item export-btn" onclick="exportToExcel(); closeSidebar();">↓ Export to Excel</button>
+        </nav>
+        <hr class="sidebar-divider"/>
+      </div>
+      <div class="sidebar-bottom">
+        <div class="user-row" tabindex="0">
+          <div class="user-dot" id="userDot">R</div>
+          <span class="user-nm" id="userName">Rahul</span>
+          <div class="user-dd">
+            <button class="dd-danger" onclick="handleLogout()">Sign out</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main scrollable content -->
+    <div class="main-area">
+
+      <!-- Topbar -->
+      <div class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title" id="topbarGreet">Good morning</div>
+          <div class="topbar-sub"   id="topbarName">Rahul</div>
+        </div>
+        <div class="topbar-actions">
+          <button class="theme-btn" onclick="toggleTheme()" title="Toggle theme">
+            <span class="theme-icon">🌙</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <p class="stat-label">Total spent</p>
+          <p class="stat-val" id="statTotal">₹0</p>
+        </div>
+        <div class="stat-card highlight">
+          <p class="stat-label">This month</p>
+          <p class="stat-val" id="statMonth">₹0</p>
+          <p class="stat-sub" id="statMonthLabel"></p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Daily avg</p>
+          <p class="stat-val" id="statAvg">₹0</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Top habit</p>
+          <p class="stat-val stat-val--sm" id="statTop">—</p>
+        </div>
+      </div>
+
+      <!-- Body grid -->
+      <div class="body-grid">
+        <div class="col-left">
+
+          <div class="card">
+            <h2 class="card-heading">Add expense</h2>
+            <div class="field-group">
+              <label class="field-label">Amount (₹)</label>
+              <input class="field-input" type="number" id="inputAmount" placeholder="0" min="1" inputmode="decimal"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label">What for?</label>
+              <input class="field-input" type="text" id="inputDesc" placeholder="Swiggy, metro, medicine…"/>
+            </div>
+            <div class="two-fields">
+              <div class="field-group">
+                <label class="field-label">Date</label>
+                <input class="field-input" type="date" id="inputDate"/>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Category</label>
+                <select class="field-input" id="inputCategory">
+                  <option value="Food">🍔 Food</option>
+                  <option value="Transport">🚌 Transport</option>
+                  <option value="Shopping">🛍 Shopping</option>
+                  <option value="Bills">💡 Bills</option>
+                  <option value="Entertainment">🎬 Entertainment</option>
+                  <option value="Health">💊 Health</option>
+                  <option value="Other">· Other</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn-primary" id="addBtn" onclick="handleAddExpense()">Add expense</button>
+          </div>
+
+          <div class="card">
+            <h2 class="card-heading">💡 Insights</h2>
+            <div id="insightsList">
+              <p class="empty-note">Add a few expenses to see patterns.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-right">
+          <div class="card">
+            <h2 class="card-heading">🕐 Recent</h2>
+            <div id="txList">
+              <p class="empty-note">No expenses yet.</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2 class="card-heading">📈 Breakdown</h2>
+            <div class="charts-grid">
+              <div>
+                <p class="chart-lbl">By category</p>
+                <div class="chart-box"><canvas id="pieChart"></canvas></div>
+              </div>
+              <div>
+                <p class="chart-lbl">Last 6 months</p>
+                <div class="chart-box"><canvas id="barChart"></canvas></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ CONTACT FOOTER — lives inside .main-area so it's only visible on app page ═══ -->
+      <footer class="contact-footer">
+        <div class="contact-inner">
+          <div class="contact-brand">
+            <span class="contact-logo">✦</span>
+            <span class="contact-name">Xpense</span>
+          </div>
+          <p class="contact-tagline">Built with care for your financial clarity.</p>
+          <div class="contact-links">
+            <a class="contact-link" href="mailto:dev@xpense.app">
+              <span class="contact-link-icon">✉</span> dev@xpense.app
+            </a>
+            <a class="contact-link" href="https://github.com" target="_blank" rel="noopener">
+              <span class="contact-link-icon">⌥</span> GitHub
+            </a>
+            <a class="contact-link" href="https://twitter.com" target="_blank" rel="noopener">
+              <span class="contact-link-icon">𝕏</span> Twitter
+            </a>
+          </div>
+          <div class="visitor-counter">
+            <span class="visitor-icon">👁</span>
+            <span class="visitor-text"><span id="visitorCount">—</span> visits and counting</span>
+          </div>
+          <p class="contact-copy">© 2025 Xpense · Made with ♥ · <a href="mailto:dev@xpense.app">Contact the devs</a></p>
+        </div>
+      </footer>
+
+    </div><!-- /main-area -->
+  </div><!-- /appPage -->
+
+  <div id="toasts"></div>
+
+  <script src="auth.js"></script>
+  <script src="app.js"></script>
+  <script>
+    fetch('https://api.countapi.xyz/hit/xpense-app/visits')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var el = document.getElementById('visitorCount');
+        if (el && data.value) el.textContent = Number(data.value).toLocaleString('en-IN');
+      })
+      .catch(function() {});
+  </script>
+</body>
+</html>            <label class="field-label">Email</label>
             <input class="field-input" type="email" id="loginEmail" placeholder="you@email.com" autocomplete="email"/>
           </div>
           <div class="field-group">
