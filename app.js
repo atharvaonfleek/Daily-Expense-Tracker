@@ -1,5 +1,3 @@
-/* ── Xpense · app.js ── */
-
 var CATS = {
   Food:          '🍔',
   Transport:     '🚌',
@@ -17,14 +15,13 @@ var pieInst    = null;
 var barInst    = null;
 var storageKey = '';
 
-/* ── Called by auth.js after login ── */
 function initApp() {
   storageKey = 'xpense_exp_' + currentUser.email;
   expenses   = JSON.parse(localStorage.getItem(storageKey) || '[]');
 
   document.getElementById('inputDate').value = getToday();
 
-  // Apply theme icon
+
   var theme = document.documentElement.getAttribute('data-theme') || 'light';
   document.querySelectorAll('.theme-icon').forEach(function(el) {
     el.textContent = theme === 'dark' ? '☀️' : '🌙';
@@ -34,7 +31,7 @@ function initApp() {
   buildInsights();
 }
 
-/* ── Mobile sidebar ── */
+
 function openSidebar() {
   document.getElementById('sidebar').classList.add('open');
   document.getElementById('sidebarOverlay').classList.add('show');
